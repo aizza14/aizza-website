@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Messi Sliding Puzzle</title>
+  <style>
+    body {
+      background-color: #0d0d0d;
+      color: #f0f0f0;
+      font-family:Georgia, 'Times New Roman', Times, serif;
+      text-align: center;
+      padding: 40px;
+    }
+
+    h1 {
+      color: #ff2d75;
+    }
+
+    select, button {
+      margin: 10px;
+      padding: 10px;
+      font-size: 1rem;
+      color: #ff2d75;
+      border-radius: 5px;
+    }
+
+    #puzzle-container {
+      margin: 30px auto;
+      display: grid;
+      gap: 2px;
+      justify-content: center;
+    }
+
+    .tile {
+      width: 80px;
+      height: 80px;
+      background-size: calc(80px * var(--size)) calc(80px * var(--size));
+      background-repeat: no-repeat;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    .tile.empty {
+      background: #222;
+      cursor: default;
+    }
+
+    .win-message {
+      margin-top: 20px;
+      color: #00ff99;
+      font-weight: bold;
+      display: none;
+    }
+
+    .btn-back {
+      background-color: transparent;
+      border: 1px solid #ff2d75;
+      color: #ff2d75;
+      padding: 8px 16px;
+      border-radius: 5px;
+      text-decoration: none;
+      transition: 0.3s;
+      display: inline-block;
+      margin-top: 20px;
+    }
+
+    .btn-back:hover {
+      background-color: #ff2d75;
+      color: #0d0d0d;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Messi Sliding Puzzle</h1>
+  <label for="level">Select Difficulty:</label>
+  <select id="level">
+    <option value="3">Easy (3x3)</option>
+    <option value="4">Medium (4x4)</option>
+    <option value="5">Hard (5x5)</option>
+  </select>
+  <button onclick="init()">Start Game</button>
+
+  <div id="puzzle-container"></div>
+
+  <div class="win-message" id="winMsg">🎉 You solved the puzzle!</div>
+
+  <a href="scratch.html" class="btn-back">← Back to Scratch Page</a>
+
+  <script>
+    let size, container, imageSrc, board = [], emptyTile;
+
+    function init() {
+      size = parseInt(document.getElementById('level').value);
+      container = document.getElementById('puzzle-container');
+      container.innerHTML = '';
+      document.getElementById('winMsg').style.display = 'none';
+
+      // Image per difficulty
+      if (size === 3) imageSrc = 'images/messi-easy.jpg';
+      else if (size === 4) imageSrc = 'images/messi-medium.jpg';
+      else imageSrc = 'images/messi-hard.jpg';
+
+      container.style.gridTemplateColumns = `repeat(${size}, 80px)`;
+      container.style.gridTemplateRows = `repeat(${size}, 80px)`;
+      container.style.setProperty('--size', size);
+
+      board = [];
+
+      for (let y = 0; y < size; y++) {
+        let row = [];
+        for (let x = 0; x < size; x++) {
+          const tile = document.createElement('div');
+          tile.className = 'tile';
+          tile.dataset.x = x;
+          tile.dataset.y = y;
+          tile.style.backgroundImage = `url(${imageSrc})`;
+          tile.style.backgroundSize = `${size * 80}px ${size * 80}px`;
+          tile.style.backgroundPosition = `-${x * 80}px -${y * 80}px`;
+          tile.addEventListener('click', () => tryMove(x, y));
+          container.appendChild(tile);
+          row.push(tile);
+        }
+        board.push(row);
+      }
+
+      // Set last tile to empty
+      emptyTile = board[size - 1][size - 1];
+      emptyTile.classList.add('empty');
+      emptyTile.style.backgroundImage = 'none';
+
+      shuffleBoard();
+    }
+
+    function tryMove(x, y) {
+      const dx = Math.abs(x - getEmptyX());
+      const dy = Math.abs(y - getEmptyY());
+
+      if ((dx + dy) === 1) {
+        const tile = board[y][x];
+        const ex = getEmptyX();
+        const ey = getEmptyY();
+        swapTiles(tile, board[ey][ex]);
+        if (isSolved()) document.getElementById('winMsg').style.display = 'block';
+      }
+    }
+
+    function swapTiles(t1, t2) {
+      const tempPos = t1.style.backgroundPosition;
+      const tempImg = t1.style.backgroundImage;
+
+      t1.style.backgroundPosition = t2.style.backgroundPosition;
+      t1.style.backgroundImage = t2.style.backgroundImage;
+      t2.style.backgroundPosition = tempPos;
+      t2.style.backgroundImage = tempImg;
+
+      t1.classList.toggle('empty');
+      t2.classList.toggle('empty');
+
+      emptyTile = t1.classList.contains('empty') ? t1 : t2;
+    }
+
+    function getEmptyX() {
+      return parseInt(emptyTile.dataset.x);
+    }
+
+    function getEmptyY() {
+      return parseInt(emptyTile.dataset.y);
+    }
+
+    function shuffleBoard() {
+      for (let i = 0; i < 1000; i++) {
+        const ex = getEmptyX();
+        const ey = getEmptyY();
+        const moves = [];
+
+        if (ex > 0) moves.push([ex - 1, ey]);
+        if (ex < size - 1) moves.push([ex + 1, ey]);
+        if (ey > 0) moves.push([ex, ey - 1]);
+        if (ey < size - 1) moves.push([ex, ey + 1]);
+
+        const [nx, ny] = moves[Math.floor(Math.random() * moves.length)];
+        swapTiles(board[ey][ex], board[ny][nx]);
+      }
+    }
+
+    function isSolved() {
+      let count = 0;
+      for (let y = 0; y < size; y++) {
+        for (let x = 0; x < size; x++) {
+          const tile = board[y][x];
+          const expectedPos = `-${x * 80}px -${y * 80}px`;
+          if (tile.classList.contains('empty')) continue;
+          if (tile.style.backgroundPosition !== expectedPos) return false;
+          count++;
+        }
+      }
+      return true;
+    }
+  </script>
+</body>
+</html>
